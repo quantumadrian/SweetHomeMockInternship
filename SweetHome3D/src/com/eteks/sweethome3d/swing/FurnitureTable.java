@@ -725,6 +725,8 @@ public class FurnitureTable extends JTable implements View, Printable {
 
   /**
    * Prints this component to make it fill <code>pageFormat</code> imageable size.
+   * If the home contains more than one level, the printed table includes a Level column 
+   * (even when it isn't displayed on screen) so that furniture at different levels can be distinguished.
    */
   public int print(Graphics g, PageFormat pageFormat, int pageIndex) throws PrinterException {
     // Create a printable column model from the column model of this table 
@@ -750,8 +752,8 @@ public class FurnitureTable extends JTable implements View, Printable {
           return headerRendererLabel;
         }
       };
-    for (int columnIndex = 0, n = columnModel.getColumnCount(); columnIndex < n; columnIndex++) {
-      final TableColumn tableColumn = columnModel.getColumn(columnIndex);
+    List<TableColumn> printedColumns = getPrintedColumns(columnModel);
+    for (final TableColumn tableColumn : printedColumns) {
       // Create a printable column from existing table column
       TableColumn printableColumn = new TableColumn();
       printableColumn.setIdentifier(tableColumn.getIdentifier());
@@ -780,6 +782,32 @@ public class FurnitureTable extends JTable implements View, Printable {
       printableColumnModel.addColumn(printableColumn);
     }    
     return print(g, pageFormat, pageIndex, printableColumnModel, Color.BLACK);
+  }
+
+  /**
+   * Returns the columns of <code>columnModel</code> that should be printed, 
+   * with the Level column added after the Name column if the home contains 
+   * more than one level and this column isn't displayed.
+   */
+  private List<TableColumn> getPrintedColumns(TableColumnModel columnModel) {
+    List<TableColumn> printedColumns = new ArrayList<TableColumn>(Collections.list(columnModel.getColumns()));
+    if (columnModel instanceof FurnitureTableColumnModel
+        && ((FurnitureTreeTableModel)getModel()).home.getLevels().size() > 1) {
+      int levelColumnIndex = 0;
+      for (int i = 0; i < printedColumns.size(); i++) {
+        Object columnIdentifier = printedColumns.get(i).getIdentifier();
+        if (columnIdentifier == HomePieceOfFurniture.SortableProperty.LEVEL) {
+          // Level column already displayed
+          return printedColumns;
+        } else if (columnIdentifier == HomePieceOfFurniture.SortableProperty.NAME) {
+          levelColumnIndex = i + 1;
+        }
+      }
+      TableColumn levelColumn = ((FurnitureTableColumnModel)columnModel).availableColumns.get(
+          HomePieceOfFurniture.SortableProperty.LEVEL);
+      printedColumns.add(levelColumnIndex, levelColumn);
+    }
+    return printedColumns;
   }
 
   /**
